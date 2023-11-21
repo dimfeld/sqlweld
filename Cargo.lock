@@ -697,7 +697,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "error-stack",
- "eyre",
  "flume",
  "ignore",
  "liquid",
