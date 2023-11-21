@@ -1,0 +1,24 @@
+[package]
+name = "sqlweld"
+version = "0.1.0"
+edition = "2021"
+authors = ["Daniel Imfeld <dimfeld>"]
+description = "Create SQL files from templates and partials"
+readme = "README.md"
+repository = "https://github.com/dimfeld/sqlweld"
+license = "MIT OR Apache-2.0"
+categories = ["command-line-utilities", "database", "template-engine"]
+
+[lib]
+name = "sqlweld"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4.4.8", features = ["derive"] }
+error-stack = { version = "0.4.1", features = ["eyre"] }
+eyre = "0.6.9"
+flume = { version = "0.11.0", default-features = false, features = ["nanorand"] }
+ignore = "0.4.20"
+liquid = "0.26.4"
+rayon = "1.8.0"
+thiserror = "1.0.50"
