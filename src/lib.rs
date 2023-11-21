@@ -45,7 +45,6 @@ pub enum Error {
 }
 
 pub fn build(options: Options) -> Result<(), Report<Error>> {
-    // Find the files
     let input_dir = options
         .input
         .unwrap_or_else(|| std::env::current_dir().expect("getting current directory"));
@@ -73,8 +72,6 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
 
     let walker = walker.build_parallel();
 
-    let mut templates = vec![];
-
     let (file_tx, file_rx) = flume::bounded(64);
 
     std::thread::spawn(move || {
@@ -100,6 +97,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
         });
     });
 
+    let mut templates = vec![];
     let mut partial_source = InMemorySource::new();
 
     for path in file_rx {
@@ -121,11 +119,21 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
             let contents = std::fs::read_to_string(&path)
                 .change_context(Error::ReadTemplate)
                 .attach_printable_lazy(|| path.display().to_string())?;
+
+            // The `render` tag automatically adds .liquid to the partial name, do the same here to
+            // match it.
             partial_source.add(format!("{partial_name}.liquid"), contents);
         } else {
             // We read the templates later.
             templates.push(path);
         }
+    }
+
+    if templates.is_empty() {
+        if options.verbose {
+            println!("No templates found");
+        }
+        return Ok(());
     }
 
     let partials = EagerCompiler::new(partial_source);
@@ -135,13 +143,6 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
         .expect("building parser");
 
     let context = options.context.unwrap_or_default();
-
-    if templates.is_empty() {
-        if options.verbose {
-            println!("No templates found");
-        }
-        return Ok(());
-    }
 
     templates.into_par_iter().try_for_each(|path| {
         let template = parser
@@ -176,7 +177,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
 
         if options.verbose {
             println!(
-                "Writing template\n    {}\nto  {}",
+                "Writing {}\nto      {}",
                 path.display(),
                 output_path.display()
             );
@@ -189,7 +190,5 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
         Ok::<_, Report<Error>>(())
     })?;
 
-    // Read the partials
-    // Load the context
     Ok(())
 }
