@@ -1,0 +1,4 @@
+SELECT * FROM some_objects
+WHERE id=$[obj_id] AND team = $[team_id] AND {% render 'perm_check', table: "'some_objects'" %}
+
+

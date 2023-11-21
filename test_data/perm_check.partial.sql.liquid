@@ -1,0 +1,12 @@
+{% unless user %}{% assign user = "$[user_id]" %}{% endunless %}
+{% unless team  %}{% assign team = "$[team_id]" %}{% endunless %}
+{% unless action %}{% assign action = "'read'" %}{% endunless %}
+
+EXISTS (
+  SELECT 1
+  FROM permissions
+  WHERE user_id = {{ user }}
+  AND team_id = {{ team }}
+  AND action = {{ action }}
+  AND object_type = {{table}}
+)

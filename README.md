@@ -9,8 +9,8 @@ sqlweld is a CLI tool designed to help manage large libraries of SQL statements 
     [sqlx](https://github.com/launchbadge/sqlx).
 
 sqlweld is designed to help solve these problems. Query files are Liquid templates ending in the
-`.sql.liquid` extension, and partials end with `.sql.partial.liquid`. The tool will run over the query files and
-write a `.sql` file for each input template it finds.
+`.sql.liquid` extension, and partials end with `.partial.sql.liquid`. The tool will render a `.sql` file for each
+non-partial template it finds.
 
-sqlweld can also be used as a library and used from a `build.rs` file. By setting the `print_rerun_if_changed` option,
+sqlweld is also a Rust library and can used from a `build.rs` file. By setting the `print_rerun_if_changed` option,
 it will automatically print the appropriate statements to rerun if the queries change.

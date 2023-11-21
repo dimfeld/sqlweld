@@ -121,7 +121,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
             let contents = std::fs::read_to_string(&path)
                 .change_context(Error::ReadTemplate)
                 .attach_printable_lazy(|| path.display().to_string())?;
-            partial_source.add(partial_name, contents);
+            partial_source.add(format!("{partial_name}.liquid"), contents);
         } else {
             // We read the templates later.
             templates.push(path);
