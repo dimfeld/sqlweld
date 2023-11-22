@@ -1,3 +1,7 @@
+## Unreleased
+
+- Hide source file locations in errors when running in release mode, and the RUST_BACKTRACE environment variable is not set.
+
 ## 0.1.4
 
 - Skip writing a file when the contents hasn't changed. This helps prevent thrashing when something else is monitoring the files
