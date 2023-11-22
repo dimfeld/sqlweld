@@ -1,6 +1,6 @@
 [package]
 name = "sqlweld"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Daniel Imfeld <dimfeld>"]
 description = "Create SQL files from templates and partials"
