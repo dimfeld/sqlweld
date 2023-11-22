@@ -17,7 +17,7 @@ it will automatically print the appropriate statements to rerun if the queries c
 
 # Installation
 
-Installation currently just via `cargo install sqlweld`. More distribution coming soon.
+Check the [releases page](https://github.com/dimfeld/sqlweld/releases) for Homebrew, npm, curl, and other options. Of course, `cargo install sqlweld` also works if you already have Rust installed.
 
 # Example
 
