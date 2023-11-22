@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Hide source file locations in errors when running in release mode, and the RUST_BACKTRACE environment variable is not set.
+- Allow specifying -v multiple times to increase verbosity
 
 ## 0.1.4
 

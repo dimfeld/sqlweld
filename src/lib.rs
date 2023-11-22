@@ -28,8 +28,8 @@ pub struct Options {
     context: Option<liquid::Object>,
 
     /// Print output as files are processed.
-    #[clap(short, long)]
-    verbose: bool,
+    #[clap(short, long, action=clap::ArgAction::Count)]
+    verbose: u8,
 
     /// Print rerun-if-changed statements for build.rs.
     #[clap(long)]
@@ -137,7 +137,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
 
         let partial_name = name.strip_suffix(".partial.sql.liquid");
         if let Some(partial_name) = partial_name {
-            if options.verbose {
+            if options.verbose >= 2 {
                 println!("Reading partial {} from {}", partial_name, path.display());
             }
 
@@ -162,7 +162,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
     }
 
     if templates.is_empty() {
-        if options.verbose {
+        if options.verbose >= 1 {
             println!("No templates found");
         }
         return Ok(());
@@ -230,17 +230,19 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
         if !options.always_write {
             if let Ok(existing) = std::fs::read_to_string(&output_path) {
                 if existing == output {
+                    if options.verbose >= 3 {
+                        println!(
+                            "Skipping {} because it did not change",
+                            output_path.display()
+                        );
+                    }
                     return Ok(());
                 }
             }
         }
 
-        if options.verbose {
-            println!(
-                "Writing {}\nto      {}",
-                path.display(),
-                output_path.display()
-            );
+        if options.verbose >= 1 {
+            println!("Writing {}", output_path.display());
         }
 
         write_file(&output_path, &output)?;
