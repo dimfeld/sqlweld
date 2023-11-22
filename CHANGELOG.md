@@ -1,3 +1,7 @@
+## 0.1.2
+
+- Return an error if multiple partials have the same name
+
 ## 0.1.1
 
 - Add option to customize extension
