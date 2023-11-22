@@ -1,7 +1,11 @@
 #[cfg(test)]
 mod test;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use clap::Parser;
 use error_stack::{Report, ResultExt};
@@ -239,12 +243,29 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
             );
         }
 
-        std::fs::write(&output_path, output)
-            .change_context(Error::WriteResult)
-            .attach_printable_lazy(|| output_path.display().to_string())?;
+        write_file(&output_path, &output)?;
 
         Ok::<_, Report<Error>>(())
     })?;
 
+    Ok(())
+}
+
+fn atomic_write_file(path: &Path, contents: &str) -> Result<(), std::io::Error> {
+    let mut temp = tempfile::NamedTempFile::new()?;
+    temp.write_all(contents.as_bytes())?;
+    temp.persist(path)?;
+    Ok(())
+}
+
+fn write_file(path: &Path, contents: &str) -> Result<(), Report<Error>> {
+    let atomic_result = atomic_write_file(path, contents);
+    if atomic_result.is_ok() {
+        return Ok(());
+    }
+
+    std::fs::write(path, contents)
+        .change_context(Error::WriteResult)
+        .attach_printable_lazy(|| path.display().to_string())?;
     Ok(())
 }
