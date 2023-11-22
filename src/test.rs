@@ -225,3 +225,78 @@ fn duplicate_partials() {
 
     assert!(matches!(err.current_context(), Error::DuplicatePartial));
 }
+
+#[test]
+fn skip_write_if_not_changed() {
+    let dir = create_input();
+    let path = dir.path().to_owned();
+
+    std::fs::write(
+        path.join("update_some_objects.sql"),
+        apply_header(HEADER, EXPECTED_UPDATE_SOME_OBJECTS),
+    )
+    .unwrap();
+
+    let current_mtime = std::fs::metadata(path.join("update_some_objects.sql"))
+        .unwrap()
+        .modified()
+        .unwrap();
+
+    std::thread::sleep(std::time::Duration::from_millis(1));
+
+    build(Options {
+        input: Some(path.clone()),
+        ..Default::default()
+    })
+    .unwrap();
+
+    let new_mtime = std::fs::metadata(path.join("update_some_objects.sql"))
+        .unwrap()
+        .modified()
+        .unwrap();
+
+    println!("current_mtime: {:?}", current_mtime);
+    println!("new_mtime: {:?}", new_mtime);
+
+    assert_eq!(
+        current_mtime, new_mtime,
+        "file should not have been changed"
+    );
+    assert_eq!(
+        std::fs::read_to_string(path.join("update_some_objects.sql")).unwrap(),
+        apply_header(HEADER, EXPECTED_UPDATE_SOME_OBJECTS)
+    );
+    assert_eq!(
+        std::fs::read_to_string(path.join("get_some_objects.sql")).unwrap(),
+        apply_header(HEADER, EXPECTED_GET_SOME_OBJECTS)
+    );
+
+    assert!(std::fs::File::open(path.join("other_template.sql")).is_err());
+    assert!(std::fs::File::open(path.join("perm_check.sql")).is_err());
+}
+
+#[test]
+fn overwrite() {
+    let dir = create_input();
+    let path = dir.path().to_owned();
+
+    std::fs::write(path.join("update_some_objects.sql"), "some old content").unwrap();
+
+    build(Options {
+        input: Some(path.clone()),
+        ..Default::default()
+    })
+    .unwrap();
+
+    assert_eq!(
+        std::fs::read_to_string(path.join("update_some_objects.sql")).unwrap(),
+        apply_header(HEADER, EXPECTED_UPDATE_SOME_OBJECTS)
+    );
+    assert_eq!(
+        std::fs::read_to_string(path.join("get_some_objects.sql")).unwrap(),
+        apply_header(HEADER, EXPECTED_GET_SOME_OBJECTS)
+    );
+
+    assert!(std::fs::File::open(path.join("other_template.sql")).is_err());
+    assert!(std::fs::File::open(path.join("perm_check.sql")).is_err());
+}
