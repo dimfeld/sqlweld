@@ -1,7 +1,6 @@
-## Unreleased
+## 0.1.4
 
-- Skip writing a file when the contents hasn't changed. This helps prevent thrashing when something else is monitoring
-    the files
+- Skip writing a file when the contents hasn't changed. This helps prevent thrashing when something else is monitoring the files
 - Use atomic writes when possible
 
 ## 0.1.3
