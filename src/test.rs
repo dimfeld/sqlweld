@@ -1,6 +1,6 @@
 use tempfile::TempDir;
 
-use super::{build, Options};
+use super::{build, Error, Options};
 
 const UPDATE_SOME_OBJECTS: &'static str =
     include_str!("../test_data/update_some_objects.sql.liquid");
@@ -202,4 +202,26 @@ fn custom_extension() {
 
     assert!(std::fs::File::open(path.join("other_template.sql")).is_err());
     assert!(std::fs::File::open(path.join("perm_check.sql")).is_err());
+}
+
+#[test]
+fn duplicate_partials() {
+    let dir = create_input();
+    let path = dir.path().to_owned();
+
+    let dir1 = path.join("dir1");
+    std::fs::create_dir(&dir1).unwrap();
+    let dir2 = path.join("dir2");
+    std::fs::create_dir(&dir2).unwrap();
+
+    std::fs::write(dir1.join("dup.partial.sql.liquid"), "abc").unwrap();
+    std::fs::write(dir2.join("dup.partial.sql.liquid"), "def").unwrap();
+
+    let err = build(Options {
+        input: Some(path.clone()),
+        ..Default::default()
+    })
+    .expect_err("should fail");
+
+    assert!(matches!(err.current_context(), Error::DuplicatePartial));
 }

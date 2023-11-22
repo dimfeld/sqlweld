@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test;
 
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use clap::Parser;
 use error_stack::{Report, ResultExt};
@@ -55,6 +55,8 @@ pub enum Error {
     WriteResult,
     #[error("Internal consistency error")]
     InternalError,
+    #[error("Multiple partials with the same name were found")]
+    DuplicatePartial,
 }
 
 pub fn build(options: Options) -> Result<(), Report<Error>> {
@@ -112,6 +114,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
 
     let mut templates = vec![];
     let mut partial_source = InMemorySource::new();
+    let mut partial_paths: HashMap<String, PathBuf> = HashMap::new();
 
     for path in file_rx {
         if options.print_rerun_if_changed {
@@ -136,6 +139,13 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
             // The `render` tag automatically adds .liquid to the partial name, do the same here to
             // match it.
             partial_source.add(format!("{partial_name}.liquid"), contents);
+            if let Some(other_path) = partial_paths.get(partial_name) {
+                return Err(Error::DuplicatePartial)
+                    .attach_printable(other_path.display().to_string())
+                    .attach_printable(path.display().to_string());
+            }
+
+            partial_paths.insert(partial_name.to_string(), path);
         } else {
             // We read the templates later.
             templates.push(path);
