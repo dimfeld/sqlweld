@@ -43,6 +43,11 @@ pub struct Options {
     /// Customize the extension that will be added to the generated files.
     #[clap(long = "ext")]
     extension: Option<String>,
+
+    /// Always write the output files, even if the rendered template is identical to the file's
+    /// current contents.
+    #[clap(long)]
+    always_write: bool,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -200,14 +205,6 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
             path.with_file_name(output_filename)
         };
 
-        if options.verbose {
-            println!(
-                "Writing {}\nto      {}",
-                path.display(),
-                output_path.display()
-            );
-        }
-
         let header = options
             .header
             .as_deref()
@@ -225,6 +222,22 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
         } else {
             format!("{}\n\n{}", header_lines, output)
         };
+
+        if !options.always_write {
+            if let Ok(existing) = std::fs::read_to_string(&output_path) {
+                if existing == output {
+                    return Ok(());
+                }
+            }
+        }
+
+        if options.verbose {
+            println!(
+                "Writing {}\nto      {}",
+                path.display(),
+                output_path.display()
+            );
+        }
 
         std::fs::write(&output_path, output)
             .change_context(Error::WriteResult)

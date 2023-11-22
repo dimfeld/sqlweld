@@ -1,3 +1,8 @@
+## Unreleased
+
+- Skip writing a file when the contents hasn't changed. This helps prevent thrashing when something else is monitoring
+    the files
+
 ## 0.1.3
 
 - Add cargo dist for for easier installs. No other changes
