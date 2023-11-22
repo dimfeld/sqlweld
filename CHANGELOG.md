@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Add cargo dist for for easier installs. No other changes
+
 ## 0.1.2
 
 - Return an error if multiple partials have the same name
