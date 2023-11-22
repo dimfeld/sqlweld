@@ -19,6 +19,15 @@ it will automatically print the appropriate statements to rerun if the queries c
 
 Check the [releases page](https://github.com/dimfeld/sqlweld/releases) for Homebrew, npm, curl, and other options. Of course, `cargo install sqlweld` also works if you already have Rust installed.
 
+# Watch Mode
+
+Watch mode is not directly supported yet. Until it is, a tool such as [watchexec](https://watchexec.github.io/) can
+accomplish the same functionality.
+
+```shell
+watchexec --exts liquid -- sqlweld
+```
+
 # Example
 
 This example shows a simple use of the tool, with two queries that share a permissions check partial.
