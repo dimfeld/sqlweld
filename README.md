@@ -25,7 +25,7 @@ Watch mode is not directly supported yet. Until it is, a tool such as [watchexec
 accomplish the same functionality.
 
 ```shell
-watchexec --exts liquid -- sqlweld
+watchexec --exts liquid -- sqlweld -v
 ```
 
 # Example
