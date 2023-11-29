@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>sqlweld Changelog</title><link>http://127.0.0.1:7979/changelog</link><description>Changelog information for sqlweld</description><category domain="https://github.com/dimfeld/sqlweld">sqlweld Changelog</category><atom:link href="http://127.0.0.1:7979/changelog.rss" rel="self"/><item><title>0.1.5</title><link>http://127.0.0.1:7979/changelog/v0.1.5</link><category domain="https://github.com/dimfeld/sqlweld">sqlweld Changelog</category><guid>http://127.0.0.1:7979/changelog/v0.1.5</guid><content:encoded><![CDATA[<ul>
+<li>Hide source file locations in errors when running in release mode, and the RUST_BACKTRACE environment variable is not set.</li>
+<li>Allow specifying -v multiple times to increase verbosity</li>
+</ul>
+]]></content:encoded></item><item><title>0.1.4</title><link>http://127.0.0.1:7979/changelog/v0.1.4</link><category domain="https://github.com/dimfeld/sqlweld">sqlweld Changelog</category><guid>http://127.0.0.1:7979/changelog/v0.1.4</guid><content:encoded><![CDATA[<ul>
+<li>Skip writing a file when the contents hasn't changed. This helps prevent thrashing when something else is monitoring the files</li>
+<li>Use atomic writes when possible</li>
+</ul>
+]]></content:encoded></item><item><title>0.1.3</title><link>http://127.0.0.1:7979/changelog/v0.1.3</link><category domain="https://github.com/dimfeld/sqlweld">sqlweld Changelog</category><guid>http://127.0.0.1:7979/changelog/v0.1.3</guid><content:encoded><![CDATA[<ul>
+<li>Add cargo dist for for easier installs. No other changes</li>
+</ul>
+]]></content:encoded></item></channel></rss>
