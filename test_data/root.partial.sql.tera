@@ -1,0 +1,2 @@
+SELECT * FROM root_table
+WHERE {%block where %}{% endblock where %}

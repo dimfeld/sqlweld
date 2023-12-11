@@ -19,9 +19,9 @@ error-stack = { version = "0.4.1" }
 flume = { version = "0.11.0", default-features = false, features = ["nanorand"] }
 ignore = "0.4.20"
 itertools = "0.12.0"
-liquid = "0.26.4"
 rayon = "1.8.0"
 tempfile = "3.8.1"
+tera = "1.19.1"
 thiserror = "1.0.50"
 
 # The profile that 'cargo dist' will build with

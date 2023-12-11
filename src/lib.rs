@@ -2,7 +2,6 @@
 mod test;
 
 use std::{
-    collections::HashMap,
     io::Write,
     path::{Path, PathBuf},
 };
@@ -10,8 +9,8 @@ use std::{
 use clap::Parser;
 use error_stack::{Report, ResultExt};
 use itertools::Itertools;
-use liquid::partials::{EagerCompiler, InMemorySource};
 use rayon::prelude::*;
+use tera::Tera;
 
 #[derive(Debug, Default, Parser)]
 pub struct Options {
@@ -25,7 +24,7 @@ pub struct Options {
 
     /// Extra context to pass into the templates.
     #[clap(skip)]
-    context: Option<liquid::Object>,
+    context: Option<tera::Context>,
 
     /// Print output as files are processed.
     #[clap(short, long, action=clap::ArgAction::Count)]
@@ -91,7 +90,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
                 return false;
             };
 
-            filename.ends_with(".sql.liquid")
+            filename.ends_with(".sql.tera")
         });
 
     let walker = walker.build_parallel();
@@ -121,134 +120,109 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
         });
     });
 
+    let mut tera = Tera::default();
     let mut templates = vec![];
-    let mut partial_source = InMemorySource::new();
-    let mut partial_paths: HashMap<String, PathBuf> = HashMap::new();
 
     for path in file_rx {
+        let template_name = path
+            .strip_prefix(&input_dir)
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         if options.print_rerun_if_changed {
             println!("cargo:rerun-if-changed={}", path.display());
         }
 
-        let name = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or_default();
-
-        let partial_name = name.strip_suffix(".partial.sql.liquid");
-        if let Some(partial_name) = partial_name {
-            if options.verbose >= 2 {
-                println!("Reading partial {} from {}", partial_name, path.display());
-            }
-
-            let contents = std::fs::read_to_string(&path)
-                .change_context(Error::ReadTemplate)
-                .attach_printable_lazy(|| path.display().to_string())?;
-
-            // The `render` tag automatically adds .liquid to the partial name, do the same here to
-            // match it.
-            partial_source.add(format!("{partial_name}.liquid"), contents);
-            if let Some(other_path) = partial_paths.get(partial_name) {
-                return Err(Error::DuplicatePartial)
-                    .attach_printable(other_path.display().to_string())
-                    .attach_printable(path.display().to_string());
-            }
-
-            partial_paths.insert(partial_name.to_string(), path);
-        } else {
-            // We read the templates later.
-            templates.push(path);
-        }
+        templates.push((path, Some(template_name)));
     }
 
-    if templates.is_empty() {
+    tera.add_template_files(templates.clone())
+        .change_context(Error::ReadTemplate)?;
+
+    if tera.get_template_names().next().is_none() {
         if options.verbose >= 1 {
             println!("No templates found");
         }
         return Ok(());
     }
 
-    let partials = EagerCompiler::new(partial_source);
-    let parser = liquid::ParserBuilder::with_stdlib()
-        .partials(partials)
-        .build()
-        .expect("building parser");
-
     let context = options.context.unwrap_or_default();
 
     let extension = options.extension.as_deref().unwrap_or("sql");
 
-    templates.into_par_iter().try_for_each(|path| {
-        let template = parser
-            .parse_file(&path)
-            .change_context(Error::ReadTemplate)
-            .attach_printable_lazy(|| path.display().to_string())?;
+    templates
+        .into_par_iter()
+        .filter(|(path, _)| {
+            let p = path.to_string_lossy();
+            !p.contains(".partial.") && !p.contains(".macros.")
+        })
+        .try_for_each(|(path, name)| {
+            let name = name.unwrap();
+            let output = tera
+                .render(&name, &context)
+                .change_context(Error::Render)
+                .attach_printable_lazy(|| path.display().to_string())?;
 
-        let output = template
-            .render(&context)
-            .change_context(Error::Render)
-            .attach_printable_lazy(|| path.display().to_string())?;
+            let template_base_name = path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default()
+                .strip_suffix(".sql.tera")
+                .ok_or(Error::InternalError)
+                .attach_printable_lazy(|| {
+                    format!(
+                        "Template path did not end in .sql.tera: {}",
+                        path.display().to_string()
+                    )
+                })?;
 
-        let template_base_name = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or_default()
-            .strip_suffix(".sql.liquid")
-            .ok_or(Error::InternalError)
-            .attach_printable_lazy(|| {
-                format!(
-                    "Template path did not end in .sql.liquid: {}",
-                    path.display().to_string()
-                )
-            })?;
+            let output_filename = format!("{template_base_name}.{extension}");
+            let output_path = if let Some(output) = options.output.as_ref() {
+                output.join(output_filename)
+            } else {
+                path.with_file_name(output_filename)
+            };
 
-        let output_filename = format!("{template_base_name}.{extension}");
-        let output_path = if let Some(output) = options.output.as_ref() {
-            output.join(output_filename)
-        } else {
-            path.with_file_name(output_filename)
-        };
+            let header = options
+                .header
+                .as_deref()
+                .unwrap_or("Autogenerated by sqlweld");
 
-        let header = options
-            .header
-            .as_deref()
-            .unwrap_or("Autogenerated by sqlweld");
+            let header_lines = header
+                .split(['\n', '\r'])
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(|s| format!("-- {}", s))
+                .join("\n");
 
-        let header_lines = header
-            .split(['\n', '\r'])
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .map(|s| format!("-- {}", s))
-            .join("\n");
+            let output = if header_lines.is_empty() {
+                output
+            } else {
+                format!("{}\n\n{}", header_lines, output)
+            };
 
-        let output = if header_lines.is_empty() {
-            output
-        } else {
-            format!("{}\n\n{}", header_lines, output)
-        };
-
-        if !options.always_write {
-            if let Ok(existing) = std::fs::read_to_string(&output_path) {
-                if existing == output {
-                    if options.verbose >= 3 {
-                        println!(
-                            "Skipping {} because it did not change",
-                            output_path.display()
-                        );
+            if !options.always_write {
+                if let Ok(existing) = std::fs::read_to_string(&output_path) {
+                    if existing == output {
+                        if options.verbose >= 3 {
+                            println!(
+                                "Skipping {} because it did not change",
+                                output_path.display()
+                            );
+                        }
+                        return Ok(());
                     }
-                    return Ok(());
                 }
             }
-        }
 
-        if options.verbose >= 1 {
-            println!("Writing {}", output_path.display());
-        }
+            if options.verbose >= 1 {
+                println!("Writing {}", output_path.display());
+            }
 
-        write_file(&output_path, &output)?;
+            write_file(&output_path, &output)?;
 
-        Ok::<_, Report<Error>>(())
-    })?;
+            Ok::<_, Report<Error>>(())
+        })?;
 
     Ok(())
 }

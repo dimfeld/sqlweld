@@ -1,0 +1,3 @@
+{% extends "root.partial.sql.tera" %}
+{% block where %} id = 2 {% endblock %}
+

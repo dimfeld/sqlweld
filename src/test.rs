@@ -2,11 +2,14 @@ use tempfile::TempDir;
 
 use super::{build, Error, Options};
 
-const UPDATE_SOME_OBJECTS: &'static str =
-    include_str!("../test_data/update_some_objects.sql.liquid");
-const GET_SOME_OBJECTS: &'static str = include_str!("../test_data/get_some_objects.sql.liquid");
-const OTHER_TEMPLATE: &'static str = include_str!("../test_data/other_template.liquid");
-const PERM_CHECK: &'static str = include_str!("../test_data/perm_check.partial.sql.liquid");
+const UPDATE_SOME_OBJECTS: &'static str = include_str!("../test_data/update_some_objects.sql.tera");
+const GET_SOME_OBJECTS: &'static str = include_str!("../test_data/get_some_objects.sql.tera");
+const OTHER_TEMPLATE: &'static str = include_str!("../test_data/other_template.tera");
+const PERM_CHECK: &'static str = include_str!("../test_data/perm_check.partial.sql.tera");
+const ROOT_PARTIAL: &'static str = include_str!("../test_data/root.partial.sql.tera");
+const USES_ROOT_PARTIAL: &'static str = include_str!("../test_data/uses_root.sql.tera");
+
+const EXPECTED_USES_ROOT_PARTIAL: &'static str = include_str!("../test_data/uses_root.sql");
 
 const EXPECTED_UPDATE_SOME_OBJECTS: &'static str =
     include_str!("../test_data/update_some_objects.sql");
@@ -31,17 +34,13 @@ fn create_input() -> TempDir {
     let dirpath = dir.path();
 
     std::fs::write(
-        dirpath.join("update_some_objects.sql.liquid"),
+        dirpath.join("update_some_objects.sql.tera"),
         UPDATE_SOME_OBJECTS,
     )
     .unwrap();
-    std::fs::write(
-        dirpath.join("get_some_objects.sql.liquid"),
-        GET_SOME_OBJECTS,
-    )
-    .unwrap();
-    std::fs::write(dirpath.join("other_template.liquid"), OTHER_TEMPLATE).unwrap();
-    std::fs::write(dirpath.join("perm_check.partial.sql.liquid"), PERM_CHECK).unwrap();
+    std::fs::write(dirpath.join("get_some_objects.sql.tera"), GET_SOME_OBJECTS).unwrap();
+    std::fs::write(dirpath.join("other_template.tera"), OTHER_TEMPLATE).unwrap();
+    std::fs::write(dirpath.join("perm_check.partial.sql.tera"), PERM_CHECK).unwrap();
 
     dir
 }
@@ -205,25 +204,48 @@ fn custom_extension() {
 }
 
 #[test]
-fn duplicate_partials() {
+fn inheritance() {
     let dir = create_input();
     let path = dir.path().to_owned();
 
-    let dir1 = path.join("dir1");
-    std::fs::create_dir(&dir1).unwrap();
-    let dir2 = path.join("dir2");
-    std::fs::create_dir(&dir2).unwrap();
+    std::fs::write(path.join("root.partial.sql.tera"), ROOT_PARTIAL).unwrap();
+    std::fs::write(path.join("uses_root.sql.tera"), USES_ROOT_PARTIAL).unwrap();
 
-    std::fs::write(dir1.join("dup.partial.sql.liquid"), "abc").unwrap();
-    std::fs::write(dir2.join("dup.partial.sql.liquid"), "def").unwrap();
-
-    let err = build(Options {
+    build(Options {
         input: Some(path.clone()),
         ..Default::default()
     })
-    .expect_err("should fail");
+    .unwrap();
 
-    assert!(matches!(err.current_context(), Error::DuplicatePartial));
+    assert_eq!(
+        std::fs::read_to_string(path.join("uses_root.sql")).unwrap(),
+        apply_header(HEADER, EXPECTED_USES_ROOT_PARTIAL)
+    );
+}
+
+#[test]
+fn inherit_from_parent_dir() {
+    let dir = create_input();
+    let path = dir.path().to_owned();
+
+    std::fs::create_dir_all(path.join("in_subdir")).unwrap();
+    std::fs::write(path.join("root.partial.sql.tera"), ROOT_PARTIAL).unwrap();
+    std::fs::write(
+        path.join("in_subdir").join("uses_root.sql.tera"),
+        USES_ROOT_PARTIAL,
+    )
+    .unwrap();
+
+    build(Options {
+        input: Some(path.clone()),
+        ..Default::default()
+    })
+    .unwrap();
+
+    assert_eq!(
+        std::fs::read_to_string(path.join("in_subdir").join("uses_root.sql")).unwrap(),
+        apply_header(HEADER, EXPECTED_USES_ROOT_PARTIAL)
+    );
 }
 
 #[test]
