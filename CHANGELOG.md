@@ -1,4 +1,4 @@
-## Unreleased
+## 0.2.0
 
 - Switch to [Tera](https://keats.github.io/tera/docs) for templating.
 - Support running a SQL formatter on the output
