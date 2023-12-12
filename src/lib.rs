@@ -2,6 +2,7 @@
 mod test;
 
 use std::{
+    collections::HashMap,
     io::Write,
     path::{Path, PathBuf},
 };
@@ -63,7 +64,7 @@ pub enum Error {
     WriteResult,
     #[error("Internal consistency error")]
     InternalError,
-    #[error("Multiple partials with the same name were found")]
+    #[error("Multiple partials or macro files with the same name were found")]
     DuplicatePartial,
 }
 
@@ -120,17 +121,62 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
         });
     });
 
+    #[derive(PartialEq, Eq, Copy, Clone)]
+    enum TemplateType {
+        Macro,
+        Partial,
+        Normal,
+    }
+
+    const MACRO_SUFFIX: &str = ".macros.sql.tera";
+    const PARTIAL_SUFFIX: &str = ".partial.sql.tera";
+    fn template_type(path: &Path) -> TemplateType {
+        let p = path.to_string_lossy();
+        match p {
+            p if p.ends_with(MACRO_SUFFIX) => TemplateType::Macro,
+            p if p.ends_with(PARTIAL_SUFFIX) => TemplateType::Partial,
+            _ => TemplateType::Normal,
+        }
+    }
+
     let mut tera = Tera::default();
+    let mut partials: HashMap<String, PathBuf> = HashMap::new();
     let mut templates = vec![];
 
     for path in file_rx {
-        let template_name = path
-            .strip_prefix(&input_dir)
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
         if options.print_rerun_if_changed {
             println!("cargo:rerun-if-changed={}", path.display());
+        }
+
+        let template_name = path.strip_prefix(&input_dir).unwrap();
+
+        let typ = template_type(&template_name);
+        let template_name = match typ {
+            TemplateType::Normal => template_name.to_string_lossy().to_string(),
+            TemplateType::Macro => template_name
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .strip_suffix(MACRO_SUFFIX)
+                .unwrap()
+                .to_string(),
+            TemplateType::Partial => template_name
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .strip_suffix(PARTIAL_SUFFIX)
+                .unwrap()
+                .to_string(),
+        };
+
+        if typ != TemplateType::Normal {
+            if let Some(existing) = partials.get(&template_name) {
+                return Err(Error::DuplicatePartial)
+                    .attach_printable(existing.display().to_string())
+                    .attach_printable(path.display().to_string());
+            }
+
+            partials.insert(template_name.clone(), path.clone());
         }
 
         templates.push((path, Some(template_name)));
@@ -152,10 +198,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
 
     templates
         .into_par_iter()
-        .filter(|(path, _)| {
-            let p = path.to_string_lossy();
-            !p.contains(".partial.") && !p.contains(".macros.")
-        })
+        .filter(|(path, _)| template_type(path) == TemplateType::Normal)
         .try_for_each(|(path, name)| {
             let name = name.unwrap();
             let output = tera

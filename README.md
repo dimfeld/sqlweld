@@ -39,7 +39,7 @@ This example shows a simple use of the tool, with two queries that share a permi
 ### get_some_objects.sql.tera
 
 ```sql
-{% import "perm_check.partial.sql.tera" as macros %}
+{% import "perm_check" as macros %}
 SELECT * FROM some_objects
 WHERE id=$[obj_id] AND team = $[team_id]
 AND {{ macros::perm_check(table="'some_objects'") }}
@@ -48,7 +48,7 @@ AND {{ macros::perm_check(table="'some_objects'") }}
 ### update_some_objects.sql.tera
 
 ```sql
-{% import "perm_check.partial.sql.tera" as macros %}
+{% import "perm_check" as macros %}
 UPDATE some_objects
 SET value = 'a' 
 WHERE id=$[obj_id] AND team = $[team_id]

@@ -204,6 +204,30 @@ fn custom_extension() {
 }
 
 #[test]
+fn duplicate_partials() {
+    let dir = create_input();
+    let path = dir.path().to_owned();
+
+    let dir1 = path.join("dir1");
+    std::fs::create_dir(&dir1).unwrap();
+    let dir2 = path.join("dir2");
+    std::fs::create_dir(&dir2).unwrap();
+
+    std::fs::write(dir1.join("dup.partial.sql.tera"), "abc").unwrap();
+    std::fs::write(dir2.join("dup.macros.sql.tera"), "def").unwrap();
+
+    let err = build(Options {
+        input: Some(path.clone()),
+        ..Default::default()
+    })
+    .expect_err("should fail");
+
+    println!("{:#?}", err);
+
+    assert!(matches!(err.current_context(), Error::DuplicatePartial));
+}
+
+#[test]
 fn inheritance() {
     let dir = create_input();
     let path = dir.path().to_owned();
