@@ -873,7 +873,7 @@ dependencies = [
 
 [[package]]
 name = "sqlweld"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "clap",
  "error-stack",
