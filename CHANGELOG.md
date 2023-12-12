@@ -1,3 +1,7 @@
+## Unreleased
+
+- Switch to [Tera](https://keats.github.io/tera/docs) for templating.
+
 ## 0.1.5
 
 - Hide source file locations in errors when running in release mode, and the RUST_BACKTRACE environment variable is not set.
