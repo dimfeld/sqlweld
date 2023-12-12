@@ -5,6 +5,7 @@ use std::{
     collections::HashMap,
     io::Write,
     path::{Path, PathBuf},
+    process::Stdio,
 };
 
 use clap::Parser;
@@ -52,6 +53,12 @@ pub struct Options {
     /// current contents.
     #[clap(long)]
     always_write: bool,
+
+    /// If provided, format the files using this command.
+    ///
+    /// The command should take output on stdin and return the formatted output on stdout.
+    #[clap(short, long)]
+    formatter: Option<String>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -66,6 +73,8 @@ pub enum Error {
     InternalError,
     #[error("Multiple partials or macro files with the same name were found")]
     DuplicatePartial,
+    #[error("Failed to run SQL formatter")]
+    Formatter,
 }
 
 pub fn build(options: Options) -> Result<(), Report<Error>> {
@@ -242,6 +251,44 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
                 output
             } else {
                 format!("{}\n\n{}", header_lines, output)
+            };
+
+            let output = if let Some(formatter) = options.formatter.as_ref() {
+                let mut format_process = std::process::Command::new(formatter)
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .change_context(Error::Formatter)?;
+
+                let mut stdin = format_process.stdin.take().ok_or(Error::Formatter)?;
+                let writer_thread = std::thread::spawn(move || {
+                    stdin
+                        .write_all(output.as_bytes())
+                        .change_context(Error::Formatter)
+                });
+
+                let result = format_process
+                    .wait_with_output()
+                    .change_context(Error::Formatter)?;
+
+                writer_thread
+                    .join()
+                    .expect("format writer thread")
+                    .change_context(Error::Formatter)?;
+
+                let code = result.status.code().unwrap_or(0);
+                if code != 0 {
+                    return Err(Error::Formatter)
+                        .attach_printable(format!("Formatter exited with code {code}"))
+                        .attach_printable(String::from_utf8(result.stderr).unwrap_or_default());
+                }
+
+                let output = result.stdout;
+
+                String::from_utf8(output).change_context(Error::Formatter)?
+            } else {
+                output
             };
 
             if !options.always_write {
