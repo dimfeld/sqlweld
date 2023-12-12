@@ -10,6 +10,3 @@ AND EXISTS (
   AND action = 'read'
   AND object_type = 'some_objects'
 )
-
-
-

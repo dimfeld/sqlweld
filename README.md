@@ -8,8 +8,10 @@ sqlweld is a CLI tool designed to help manage large libraries of SQL statements 
     that come from your queries being statically defined, especially with tools that do compile-time checking like
     [sqlx](https://github.com/launchbadge/sqlx).
 
-sqlweld is designed to help solve these problems. Query files are Liquid templates ending in the
-`.sql.liquid` extension, and partials end with `.partial.sql.liquid`. The tool will render a `.sql` file for each
+sqlweld is designed to help solve these problems. Query files are [Tera](https://https://keats.github.io/tera/docs) templates ending in the
+`.sql.tera` extension. The Tera syntax is similar, though not exactly the same as, Jinja.
+
+Partials and macro files can end with `.macros.sql.tera` or `.partial.sql.tera`. The tool will render a `.sql` file for each
 non-partial template it finds.
 
 sqlweld is also a Rust library and can used from a `build.rs` file. By setting the `print_rerun_if_changed` option,
@@ -25,7 +27,7 @@ Watch mode is not directly supported yet. Until it is, a tool such as [watchexec
 accomplish the same functionality.
 
 ```shell
-watchexec --exts liquid -- sqlweld -v
+watchexec --exts tera -- sqlweld -v
 ```
 
 # Example
@@ -34,30 +36,29 @@ This example shows a simple use of the tool, with two queries that share a permi
 
 ## Input
 
-### get_some_objects.sql.liquid
+### get_some_objects.sql.tera
 
-```liquid
+```sql
+{% import "perm_check" as macros %}
 SELECT * FROM some_objects
 WHERE id=$[obj_id] AND team = $[team_id]
-AND {% render 'perm_check', table: "'some_objects'" %}
+AND {{ macros::perm_check(table="'some_objects'") }}
 ```
 
-### update_some_objects.sql.liquid
+### update_some_objects.sql.tera
 
-```liquid
+```sql
+{% import "perm_check" as macros %}
 UPDATE some_objects
 SET value = 'a' 
 WHERE id=$[obj_id] AND team = $[team_id]
-AND {% render 'perm_check', action: "'write'", table: "'some_objects'" %}
+AND {{ macros::perm_check(action="'write'", table="'some_objects'") }}
 ```
 
-### perm_check.partial.sql.liquid
+### perm_check.partial.sql.tera
 
-```liquid
-{%- unless user %}{% assign user = "$[user_id]" %}{% endunless -%}
-{%- unless team  %}{% assign team = "$[team_id]" %}{% endunless -%}
-{%- unless action %}{% assign action = "'read'" %}{% endunless -%}
-
+```sql
+{%- macro perm_check(user="$[user_id]", team="$[team_id]", action="'read'", table) -%}
 EXISTS (
   SELECT 1
   FROM permissions
@@ -66,6 +67,7 @@ EXISTS (
   AND action = {{ action }}
   AND object_type = {{table}}
 )
+{%- endmacro perm_check %}
 ```
 
 ## Output

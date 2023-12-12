@@ -1,0 +1,2 @@
+{% extends "root" %}
+{% block where %} id = 1 {% endblock %}

@@ -1,5 +1,0 @@
-UPDATE some_objects
-SET value = 'a' 
-WHERE id=$[obj_id] AND team = $[team_id]
-AND {% render 'perm_check', action: "'write'", table: "'some_objects'" %}
-
