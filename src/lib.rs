@@ -278,7 +278,7 @@ pub fn build(options: Options) -> Result<(), Report<Error>> {
                     .change_context(Error::Formatter)?;
 
                 let code = result.status.code().unwrap_or(0);
-                if code != 0 {
+                if !result.status.success() {
                     return Err(Error::Formatter)
                         .attach_printable(format!("Formatter exited with code {code}"))
                         .attach_printable(String::from_utf8(result.stderr).unwrap_or_default());
