@@ -1,0 +1,9 @@
+{
+  "marketing": {
+    "analytics": {
+      "plausible": {
+        "domain": "sqlweld.imfeld.dev"
+      }
+    }
+  }
+}
